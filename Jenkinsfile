@@ -1,108 +1,104 @@
-def imageName = 'stalinrtp.jfrog.io/valaxy-docker/valaxy-rtp'
-def registry  = 'https://stalinrtp.jfrog.io'
-def version   = '1.0.2'
-def app
-pipeline {
+def registry = 'https://nandana237.jfrog.io'
+def imageName = 'nandana237.jfrog.io/val-twitttertrend-doc/valaxy-twittertrend'
+def version   = '2.0.2'
+pipeline{
     agent {
-       node {
-         label "worker"
-      }
+        node {
+            label "jenkins-slave"
+        }
+    }
+    environment {
+        PATH = "/opt/apache-maven-3.8.7/bin:$PATH"
     }
     stages {
-        stage('Build') {
+        stage('cloning the repository from gitHub') {
             steps {
-                echo '<--------------- Building --------------->'
-                sh 'printenv'
+                git branch: 'main', credentialsId: 'github-credentials', url: 'https://github.com/Nandana237/valaxy-twittertrend.git'
+            }
+        }
+        stage('build') {
+            steps{
+                echo "------------ build started ---------"
                 sh 'mvn clean deploy -Dmaven.test.skip=true'
-                echo '<------------- Build completed --------------->'
+                echo "------------ build completed ---------"
             }
         }
         stage('Unit Test') {
             steps {
                 echo '<--------------- Unit Testing started  --------------->'
                 sh 'mvn surefire-report:report'
-                echo '<------------- Unit Testing stopped  --------------->'
+                echo '<------------- Unit Testing completed  --------------->'
             }
         }
-        
         stage ("Sonar Analysis") {
             environment {
-               scannerHome = tool 'SonarQubeScanner'
+              scannerHome = tool 'nandana-sonarscanner'
             }
             steps {
                 echo '<--------------- Sonar Analysis started  --------------->'
-                withSonarQubeEnv('SonarServer') {
+                withSonarQubeEnv('nandana-sonarqube-server') {    
                     sh "${scannerHome}/bin/sonar-scanner"
+                echo '<--------------- Sonar Analysis completed  --------------->'
                 }    
-                echo '<--------------- Sonar Analysis stopped  --------------->'
             }   
-        }    
-        
-          stage ("Quality Gate") {
-
+        }
+        stage("Checking Quality Gate") {
             steps {
                 script {
-                  echo '<--------------- Quality Gate started  --------------->' 
-                    timeout(time: 1, unit: 'HOURS') {
-                        def qg = waitForQualityGate()
-                        if(qg.status!='OK'){
-                          error "Pipeline failed due to the Quality gate issue"   
-                        }    
-                    }    
-                  echo '<--------------- Quality Gate stopped  --------------->'
-                }    
+                  echo '<--------------- Sonar Gate Analysis Started --------------->'
+                    timeout(time: 1, unit: 'HOURS'){
+                      def qg = waitForQualityGate()
+                        if(qg.status !='OK') {
+                            error "Pipeline failed due to quality gate failures: ${qg.status}"
+                        }
+                    }  
+                  echo '<--------------- Sonar Gate Analysis completed  --------------->'
+                }
+            }
+        }
+        stage("Publishing Jar to Jfrog-Maven-Repo") {
+            steps {
+                script {
+                    echo '<--------------- Jar Publish Started --------------->'
+                     def server = Artifactory.newServer url:registry+"/artifactory", credentialsId:"jfrog-access-credential"
+                     def properties = "buildid=${env.BUILD_ID}, commitid=${env.GIT_COMMIT}";
+                     def uploadSpec = """{
+                          "files": [
+                            {
+                              "pattern": "jarstaging/(*)",
+                              "target": "valaxy_twittertrend-libs-release-local/{1}",
+                              "flat": "false",
+                              "props" : "${properties}",
+                              "exclusions": [ "*.sha1", "*.md5"]
+                            }
+                        ]
+                     }"""
+                     def buildInfo = server.upload(uploadSpec)
+                     buildInfo.env.collect()
+                     server.publishBuildInfo(buildInfo)
+                     echo '<--------------- Jar Publish completed --------------->'  
+                }
             }   
-        }          
-        
-        stage(" Docker Build ") {
+        }
+        stage("Building Docker Image ") {
           steps {
             script {
                echo '<--------------- Docker Build Started --------------->'
                app = docker.build(imageName+":"+version)
-               echo '<--------------- Docker Build Ends --------------->'
+               echo '<--------------- Docker Image built --------------->'
             }
           }
         }
-        
-        stage("Jar Publish") {
-            steps {
-                script {
-                        echo '<--------------- Jar Publish Started --------------->'
-                         def server = Artifactory.newServer url:registry+"/artifactory" ,  credentialsId:"artifactorycredentialid"
-                         def properties = "buildid=${env.BUILD_ID},commitid=${GIT_COMMIT}";
-                         def uploadSpec = """{
-                              "files": [
-                                {
-                                  "pattern": "jarstaging/(*)",
-                                  "target": "valaxy-libs-release/{1}",
-                                  "flat": "false",
-                                  "props" : "${properties}",
-                                  "exclusions": [ "*.sha1", "*.md5"]
-                                }
-                             ]
-                         }"""
-                         def buildInfo = server.upload(uploadSpec)
-                         buildInfo.env.collect()
-                         server.publishBuildInfo(buildInfo)
-                         echo '<--------------- Jar Publish Ended --------------->'  
-                
-                }
-            }   
-        }    
-        
-        stage (" Docker Publish "){
+        stage ("Pushing Docker Image to Jfrog Artifactory"){
             steps {
                 script {
                    echo '<--------------- Docker Publish Started --------------->'  
-                    docker.withRegistry(registry, 'dockercredentialid'){
-                        app.push()
-                    }    
-                   echo '<--------------- Docker Publish Ended --------------->'  
+                   docker.withRegistry(registry, 'jfrog-access-credential'){app.push()}    
+                   echo '<--------------- Docker Image Pushed --------------->'  
                 }
             }
         }
-        
-         stage(" Deploy ") {
+        stage(" Deploy ") {
           steps {
             script {
                echo '<--------------- Deploy Started --------------->'
@@ -110,6 +106,7 @@ pipeline {
                echo '<--------------- Deploy Ends --------------->'
             }
           }
-        }    
+        }
     }
- }
+}
+    

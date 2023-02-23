@@ -4,7 +4,7 @@ metadata:
   name: valaxy-rtp
   namespace: valaxy
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app:  valaxy-rtp
@@ -17,7 +17,7 @@ spec:
       - name: regcred
       containers:
       - name:  valaxy-rtp
-        image: valaxy02.jfrog.io/valaxy-docker-local/ttrend:2.0.2
+        image: nandana237.jfrog.io/val-twitttertrend-doc/valaxy-twittertrend:2.0.2
         imagePullPolicy: Always
         ports:
         - containerPort: 8000

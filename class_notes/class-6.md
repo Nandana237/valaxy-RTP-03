@@ -95,7 +95,7 @@ vpc.tf
 1. Download Kubernetes credentials and cluster configuration (.kube/config file) from the cluster  
 
    ```sh 
-    aws eks update-kubeconfig --region ap-south-1 --name ed-eks-01
+    aws eks update-kubeconfig --region us-east-1 --name ed-eks-01
    ```
 
 ## Integrate Jfrog with Kubernetes cluster
@@ -103,21 +103,21 @@ vpc.tf
 1. Create deployment, namespace, and service files   
 1. Create a dedicated user to use for a docker login   
      user menu --> new user  
-     `user name`: jfrog_docker  
-     `email address`: valaxytech@gmail.com  
-     `password`: <passwrod>  
+     `user name`: kube_admin  
+     `email address`: charmingjnu@gmail.com  
+     `password`: Nandana237@#$  
 
 1.  `optional` To pull an image from jfrog at the docker level, we should go into jfrog using username and password   
 ```sh 
- docker login https://valaxy02.jfrog.io
+ docker login https://nandana237.jfrog.io
 ``` 
 1. Kubernetes uses credentials as part of the deployment process to pull the image; for this, we must create a secret at the Kubernetes level   
 ```sh 
    kubectl create secret docker-registry privatecred \
-   --docker-server=valaxy02.jfrog.io \
-   --docker-username=kubernetes_admin \
-   --docker-password=Valaxy@123 \
-   --docker-email=arsravis@gmail.com \
+   --docker-server=nandana237.jfrog.io \
+   --docker-username=kube_admin \
+   --docker-password=Nandana237@#$ \
+   --docker-email=charmingjnu@gmail.com \
    -n valaxy
 ``` 
 

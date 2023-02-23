@@ -55,7 +55,7 @@ Same we can achieve with Helm
    ```
 1. Download .kube/config file to build the node 
    ```sh
-   aws eks update-kubeconfig --region ap-south-1 --name ed-eks-01
+   aws eks update-kubeconfig --region us-east-1 --name ed-eks-01
    ```
 
 1. Setup helm repo 
